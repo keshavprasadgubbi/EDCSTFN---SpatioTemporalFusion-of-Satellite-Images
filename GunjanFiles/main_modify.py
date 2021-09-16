@@ -3,7 +3,7 @@
 # "instance_id": "f600d465-c324-4f84-9da0-8889353edfbe"
 # 3. https://portal.creodias.eu/register.php Create an account
 # 4. Setup the LINE 41 and LINE 42 creodias_user creodias_password or either set appropriate values in the environment download_s3.py
-# python main_modify.py handan --start-date 2021-08-29 --end-date 2021-09-
+# python main_modify.py handan --start-date 2021-08-29 --end-date 2021-09-10
 
 import os
 from datetime import timedelta
@@ -16,7 +16,7 @@ config = utils.create_config(args, satellite='S3')
 
 if __name__ == '__main__':
     instance = DownloadSentinelS2(config=config)
-    plant_shape_path = "" # KML path of plant
+    plant_shape_path = './JSW-dolvi.kml' # KML path of plant
     instance.download_s2(config, plant_shape_path)
 
     instance = DownloadSentinelS3(config=config)

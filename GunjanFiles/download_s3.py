@@ -18,7 +18,7 @@ try:
     import osr
     import gdal
 except ImportError:
-    from gdal import osr, gdal
+    from osgeo import osr, gdal
 import pandas as pd
 import numpy as np
 import rasterio
@@ -38,8 +38,8 @@ sys.path.append(creodias_codes)
 from creodias_finder import query
 from creodias_finder import download
 
-creodias_user = os.environ.get('CREODIAS_USER')
-creodias_password = os.environ.get('CREODIAS_PASSWORD')
+creodias_user ='keshav.quantumboy@gmail.com'
+creodias_password = 'Sangeetha2021'
 
 import cut
 import logger 

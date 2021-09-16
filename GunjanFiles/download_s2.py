@@ -100,7 +100,7 @@ class DownloadSentinelS2():
         logger.info('Downloading completed. Files downloaded at path %s', data_dir)
 
     def main(self):
-        shape_path = self.shape_dict.get(Identifier.FullPlant, None)
+        shape_path = './JSW-dolvi.kml'#self.shape_dict.get(Identifier.FullPlant, None)
         self.download_s2(self.config, shape_path)
 
 if __name__ == '__main__':
