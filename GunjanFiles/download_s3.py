@@ -6,7 +6,6 @@ Created on Sat May 23 19:02:10 2020
 @author: gunjanthakuria
 """
 
-
 import copy
 import glob
 import os
@@ -14,6 +13,7 @@ import shutil
 import sys
 import traceback
 import warnings
+
 try:
     import osr
     import gdal
@@ -32,23 +32,24 @@ from zipfile import ZipFile
 if not sys.warnoptions:
     warnings.simplefilter("ignore")
 
-creodias_codes='creodias-finder'
+creodias_codes = 'creodias-finder'
 sys.path.append(creodias_codes)
 
 from creodias_finder import query
 from creodias_finder import download
 
-creodias_user ='keshav.quantumboy@gmail.com'
+creodias_user = 'keshav.quantumboy@gmail.com'
 creodias_password = 'Sangeetha2021'
 
 import cut
-import logger 
+import logger
 import shape as shp
 import utils
 from config import Identifier
 from data import save_cloud_data, get_cloud_data
 
 logger = logger.get_logger(__file__)
+
 
 class DownloadSentinelS3():
     satellite = 'S3'
@@ -66,12 +67,12 @@ class DownloadSentinelS3():
             # specify the search polygon
             footprint = shp.read_shape_file(shape_path).geometry.loc[0]
             result = query.query('Sentinel3',
-                                start_date=record_date_str,
-                                end_date=record_date_str,
-                                geometry=footprint,
-                                productType='RBT',
-                                orbitDirection='descending')
-            if bool(result)==False:
+                                 start_date=record_date_str,
+                                 end_date=record_date_str,
+                                 geometry=footprint,
+                                 productType='RBT',
+                                 orbitDirection='descending')
+            if bool(result) == False:
                 logger.info("S3 data not available for plant %s on %s", shape_path, record_date_str)
                 return None, None
             ids = [key['id'] for key in result.values()]
@@ -82,8 +83,9 @@ class DownloadSentinelS3():
             sen3title = result[list(result.keys())[0]]['properties']['title']
             return sen3title, out
         except Exception as e:
-            logger.error("Exception in S3download_creodias for %s exception: %s trace: %s", record_date_str, str(e), traceback.format_exc())
-            return None,None
+            logger.error("Exception in S3download_creodias for %s exception: %s trace: %s", record_date_str, str(e),
+                         traceback.format_exc())
+            return None, None
 
     @staticmethod
     def unzipfile(zip_file_name):
@@ -93,9 +95,10 @@ class DownloadSentinelS3():
                 zip.extractall(path=os.path.dirname(zip_file_name))
                 return True
         except:
-            logger.error("Oops! Exception occurred while unzipping %s. trace: %s", zip_file_name, traceback.format_exc())
+            logger.error("Oops! Exception occurred while unzipping %s. trace: %s", zip_file_name,
+                         traceback.format_exc())
             return False
-    
+
     def get_region_epsg(self):
         plant_shape = shp.read_shape_file(self.shape_dict[Identifier.FullPlant]).geometry
         lat, lon = plant_shape.centroid.loc[0].y, plant_shape.centroid.loc[0].x
@@ -103,10 +106,10 @@ class DownloadSentinelS3():
 
     def convertS3_cloud(self, path, out_image_path):
         with  Dataset(os.path.join(path, "flags_an.nc")) as flags_nc:
-            cloud = flags_nc.variables["cloud_an"][:,:]
+            cloud = flags_nc.variables["cloud_an"][:, :]
         with Dataset(os.path.join(path, "geodetic_an.nc")) as geod_nc:
             lat = geod_nc.variables["latitude_an"][:]
-            lon = geod_nc.variables["longitude_an"][:]  
+            lon = geod_nc.variables["longitude_an"][:]
             nx = geod_nc.dimensions['columns'].size
             ny = geod_nc.dimensions['rows'].size
 
@@ -116,42 +119,42 @@ class DownloadSentinelS3():
         xres = (xmax - xmin) / float(nx)
         yres = (ymax - ymin) / float(ny)
         geotransform = (xmin, xres, 0, ymax, 0, -yres)
-        
+
         # Create cloud raster image
         cld_ds = gdal.GetDriverByName('GTiff').Create('cld_img.tif', nx, ny, 1, gdal.GDT_UInt16)
-        cld_ds.SetGeoTransform(geotransform)    
-        srs = osr.SpatialReference()            
-        srs.ImportFromEPSG(4326)                
-        cld_ds.SetProjection(srs.ExportToWkt()) 
-        ndv_cloud = int(cloud.fill_value)               # no data value for cloud
+        cld_ds.SetGeoTransform(geotransform)
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+        cld_ds.SetProjection(srs.ExportToWkt())
+        ndv_cloud = int(cloud.fill_value)  # no data value for cloud
         cld_ds.GetRasterBand(1).WriteArray(cloud)
         cld_ds.GetRasterBand(1).SetNoDataValue(ndv_cloud)
         # TODO: Calculating region EPSG
         target_epsg = 'EPSG:' + str(self.get_region_epsg())
-        output = gdal.Warp(out_image_path, cld_ds, format='GTiff', srcSRS='EPSG:4326', dstSRS=target_epsg, resampleAlg='near')
+        output = gdal.Warp(out_image_path, cld_ds, format='GTiff', srcSRS='EPSG:4326', dstSRS=target_epsg,
+                           resampleAlg='near')
         cld_ds = None
         output = None
         return True
 
     def cloud_to_binary(self, cloud_file, out_cloud_file):
-        cloud_file=rasterio.open(cloud_file)
-        cloud_file_array=cloud_file.read()
-        # convert clud pixels to Binary; 0 value means no cloud which has been assigned the number 100, so 100 means no cloud     
-        cloud_binary=np.where(cloud_file_array==0,100,200)
-        cloud_binary=cloud_binary.astype('uint16')
-        out_meta = cloud_file.meta.copy()  
-        out_meta.update({"driver": "GTiff",                        
-                        "height": cloud_file_array.shape[1],
-                        "width": cloud_file_array.shape[2],
-                        "transform": cloud_file.transform})
-        
+        cloud_file = rasterio.open(cloud_file)
+        cloud_file_array = cloud_file.read()
+        # convert clud pixels to Binary; 0 value means no cloud which has been assigned the number 100, so 100 means no cloud
+        cloud_binary = np.where(cloud_file_array == 0, 100, 200)
+        cloud_binary = cloud_binary.astype('uint16')
+        out_meta = cloud_file.meta.copy()
+        out_meta.update({"driver": "GTiff",
+                         "height": cloud_file_array.shape[1],
+                         "width": cloud_file_array.shape[2],
+                         "transform": cloud_file.transform})
+
         logger.info("writing binary cloud file: %s", out_cloud_file)
         with rasterio.open(out_cloud_file, "w", **out_meta) as dest:
             dest.write(cloud_binary)
         return True
-   
 
-    def resample(self, in_file, out_file, xres,yres):
+    def resample(self, in_file, out_file, xres, yres):
         try:
             output = gdal.Warp(out_file, in_file, format='GTiff', xRes=xres, yRes=yres, resampleAlg='near')
             output = None
@@ -167,11 +170,13 @@ class DownloadSentinelS3():
             s2_dates_df = get_cloud_data(config, satellite=satellite, approved_only=True)
         elif os.path.exists(cloud_file_path):
             df = pd.read_csv(cloud_file_path)
-            s2_dates_df = df[(df['shape'] == Identifier.FullPlant)&(df['cloudcoverage'] <= cloud_threshold)].loc[:,'date']
+            s2_dates_df = df[(df['shape'] == Identifier.FullPlant) & (df['cloudcoverage'] <= cloud_threshold)].loc[:,
+                          'date']
         else:
             logger.warning("S2 Cloud file missing won't be able to preserve s2 dates")
         if s2_dates_df is not None and not s2_dates_df.empty:
-            file_list = glob.glob(os.path.join(config.get_image_dir(satellite=satellite), 's2-*', 'S2_coreg_shape_20m_B12_8A_*.tif'))
+            file_list = glob.glob(
+                os.path.join(config.get_image_dir(satellite=satellite), 's2-*', 'S2_coreg_shape_20m_B12_8A_*.tif'))
             if len(config.allowed_tiles) > 0:
                 file_list = [f for f in file_list for tile in config.allowed_tiles if tile in f]
             s2_dates = list(map(lambda x: os.path.basename(x)[-14:-4], file_list))
@@ -182,17 +187,18 @@ class DownloadSentinelS3():
     def process_weekly_data(self, week_data, s2_dates):
         if len(week_data) > 0:
             WeekData = pd.DataFrame.from_records(week_data)
-            tile_df = WeekData[['date','tile_cloud']].drop_duplicates()
+            tile_df = WeekData[['date', 'tile_cloud']].drop_duplicates()
             cloud_df = WeekData.pivot(columns='shape', values='cloudcoverage', index='date').reset_index()
             pixel_df = WeekData.pivot(columns='shape', values='totalpixels', index='date').reset_index()
-            df_ = pd.merge(pixel_df, cloud_df, how='left', on=['date'], suffixes=('_totalpixels','_cloud'))
+            df_ = pd.merge(pixel_df, cloud_df, how='left', on=['date'], suffixes=('_totalpixels', '_cloud'))
             pivot_df = pd.merge(df_, tile_df, how='left', on=['date'])
             pivot_df.loc[:, 'is_S2'] = pivot_df['date'].apply(lambda x: x in s2_dates)
             pivot_df.sort_values(by=['is_S2', Identifier.FullPlant + '_cloud'], ascending=(False, True), inplace=True)
             pivot_df.reset_index(drop=True, inplace=True)
             pivot_df.loc[:, 'is_deleted'] = 0
             logger.info("sorted entries added to Weekdata: %s", pivot_df)
-            for index in pivot_df[pivot_df[Identifier.FullPlant + '_cloud'] > self.config.const_cropped_plant_cloud_percentage].index.to_list():
+            for index in pivot_df[pivot_df[
+                                      Identifier.FullPlant + '_cloud'] > self.config.const_cropped_plant_cloud_percentage].index.to_list():
                 row = pivot_df.iloc[index]
                 # Deleting the folder
                 logger.debug(f"Deleting the folder {self.config.plant} for date: {row.date}")
@@ -232,16 +238,17 @@ class DownloadSentinelS3():
                     parent_attr_value = '1 km'
                     search_tag = 'sentinel3:cloudyPixels'
                     search_attr = 'percentage'
-                    result = list(filter(lambda x: x[1]== parent_attr_value, map(lambda x: (x.getAttribute(search_attr), x.parentNode.getAttribute(parent_attr)), e.getElementsByTagName(search_tag))))
+                    result = list(filter(lambda x: x[1] == parent_attr_value, map(lambda x: (
+                    x.getAttribute(search_attr), x.parentNode.getAttribute(parent_attr)),
+                                                                                  e.getElementsByTagName(search_tag))))
                     if len(result) > 0:
                         return float(result[0][0])
             except Exception as e:
                 logger.warning("Exception while extracting tile_cloud from %s Exception: %s", meta_file_path, str(e))
         return 0
 
-
     def main(self):
-        #Initialize dates dataframe
+        # Initialize dates dataframe
         cloud_df = None
         week_data = []
         date_count = 0
@@ -265,18 +272,20 @@ class DownloadSentinelS3():
 
             if os.path.exists(S3product_folder):
                 try:
-                    #Create cloud image
+                    # Create cloud image
                     logger.info("Generating Sentinel3 cloud for %s img of %s", self.config.plant, record_date_str)
                     cloud_image = os.path.join(S3product_folder, 'S3cloud_' + record_date_str + '.tif')
                     self.convertS3_cloud(S3product_folder, cloud_image)
 
-                    logger.info("Converting Sentinel3 cloud file to binary for %s date %s", self.config.plant, record_date_str)
+                    logger.info("Converting Sentinel3 cloud file to binary for %s date %s", self.config.plant,
+                                record_date_str)
 
                     cloud_binary_file = os.path.join(S3product_folder, 'S3cloud_binary_' + record_date_str + '.tif')
                     self.cloud_to_binary(cloud_image, cloud_binary_file)
                     tile_cloud = self.get_tile_cloud(os.path.join(S3product_folder, 'xfdumanifest.xml'))
                     # Clip to fusion shape and Resample cloud file
-                    cloud_fusion_shape_500m = os.path.join(S3product_folder, 'S3_fusion_shape_' + record_date_str + '.tif')
+                    cloud_fusion_shape_500m = os.path.join(S3product_folder,
+                                                           'S3_fusion_shape_' + record_date_str + '.tif')
                     cut.crop_image(cloud_binary_file, cloud_fusion_shape_500m, fusion_shape_path)
                     logger.info("Resampling the file %s", cloud_fusion_shape_500m)
                     cloud_resmapled_20m = os.path.join(S3product_folder, 'S3_resampled_' + record_date_str + '.tif')
@@ -288,30 +297,37 @@ class DownloadSentinelS3():
                         with rasterio.open(cloud_resmapled_20m) as src:
                             if is_mask:
                                 geoms = shp.read_shape_file(shape_path, crs=src.crs).geometry
-                            cropped_img, _ =  mask(src, geoms, crop=True, filled=False) if is_mask else (src.read(), src.transform)
+                            cropped_img, _ = mask(src, geoms, crop=True, filled=False) if is_mask else (
+                            src.read(), src.transform)
 
-                        cropped_good_pixels = np.count_nonzero(cropped_img==100)
-                        cropped_cloud_pixels = np.count_nonzero(cropped_img==200)
+                        cropped_good_pixels = np.count_nonzero(cropped_img == 100)
+                        cropped_cloud_pixels = np.count_nonzero(cropped_img == 200)
                         total_pixels = cropped_good_pixels + cropped_cloud_pixels
-                        cropped_good_pixels_per = cropped_good_pixels*100/max(1, total_pixels)
-                        cropped_cloud_pixels_per = 100 if total_pixels == 0 else cropped_cloud_pixels*100/max(1, total_pixels)
+                        cropped_good_pixels_per = cropped_good_pixels * 100 / max(1, total_pixels)
+                        cropped_cloud_pixels_per = 100 if total_pixels == 0 else cropped_cloud_pixels * 100 / max(1,
+                                                                                                                  total_pixels)
                         if shape == Identifier.FusionShape:
-                            logger.info("fusion area good pixel percentage for plant %s on %s is: %.3f", self.config.plant, record_date_str, cropped_good_pixels_per)
+                            logger.info("fusion area good pixel percentage for plant %s on %s is: %.3f",
+                                        self.config.plant, record_date_str, cropped_good_pixels_per)
                         elif shape == Identifier.FullPlant:
-                            logger.info("plant area good pixel percentage for plant %s on %s is %.3f totalpixels: %d", self.config.plant, record_date_str, cropped_good_pixels_per, total_pixels)
-                        week_data.append({'date': record_date_str, 'shape': shape, 'Folder': S3product_folder, 'cloudcoverage': cropped_cloud_pixels_per, 'totalpixels': total_pixels, 'tile_cloud': tile_cloud})
+                            logger.info("plant area good pixel percentage for plant %s on %s is %.3f totalpixels: %d",
+                                        self.config.plant, record_date_str, cropped_good_pixels_per, total_pixels)
+                        week_data.append({'date': record_date_str, 'shape': shape, 'Folder': S3product_folder,
+                                          'cloudcoverage': cropped_cloud_pixels_per, 'totalpixels': total_pixels,
+                                          'tile_cloud': tile_cloud})
                     os.remove(cloud_resmapled_20m)
                 except Exception as e:
-                    logger.error("Exception in s3_download_crop for plant %s date %s, Exception: %s trace: %s", self.config.plant, record_date_str, str(e), traceback.format_exc())
+                    logger.error("Exception in s3_download_crop for plant %s date %s, Exception: %s trace: %s",
+                                 self.config.plant, record_date_str, str(e), traceback.format_exc())
                 self.remove_files(S3product_folder)
             logger.debug("count of days is : %d", date_count)
 
-            if date_count==8:
+            if date_count == 8:
                 df = self.process_weekly_data(week_data, s2_dates)
                 cloud_df = df if cloud_df is None else pd.concat([cloud_df, df])
                 logger.info("Reset WeekData and date_count to 0")
                 week_data = []
-                date_count=0
+                date_count = 0
 
         if len(week_data) > 0:
             df = self.process_weekly_data(week_data, s2_dates)
@@ -326,11 +342,14 @@ class DownloadSentinelS3():
                 logger.info("Saving clouddata file at %s", cloud_file_path)
                 cloud_df.to_csv(cloud_file_path, mode='a', index=False, header=not os.path.exists(cloud_file_path))
         logger.info("Completed DownloadSentinelS3 for %s", self.config.plant)
-        
+
     @staticmethod
     def remove_files(folder_path):
-        preserved_files = set(list(map(lambda _file: os.path.join(folder_path, _file), ['flags_an.nc', 'geodetic_an.nc', 'S3_radiance_an.nc', 'S6_radiance_an.nc', 'xfdumanifest.xml'])))
-        files_to_remove = set(list(map(lambda _file: os.path.join(folder_path, _file), os.listdir(folder_path)))) - preserved_files
+        preserved_files = set(list(map(lambda _file: os.path.join(folder_path, _file),
+                                       ['flags_an.nc', 'geodetic_an.nc', 'S3_radiance_an.nc', 'S6_radiance_an.nc',
+                                        'xfdumanifest.xml'])))
+        files_to_remove = set(
+            list(map(lambda _file: os.path.join(folder_path, _file), os.listdir(folder_path)))) - preserved_files
 
         for file_ in files_to_remove:
             os.remove(file_)

@@ -9,9 +9,9 @@ Created on Sat May 23 19:02:10 2020
 
 from sentinelsat import SentinelAPI, read_geojson, geojson_to_wkt
 from sentinelhub import WebFeatureService, BBox, CRS, DataSource, SHConfig
-from sentinelhub import SentinelHubRequest, SentinelHubDownloadClient, DataSource,MimeType, DownloadRequest,CRS, BBox
+from sentinelhub import SentinelHubRequest, SentinelHubDownloadClient, DataSource, MimeType, DownloadRequest,CRS, BBox
 from sentinelhub import AwsProductRequest, AwsTile, AwsTileRequest
-import osr
+from osgeo import osr
 from netCDF4 import Dataset
 from zipfile import ZipFile
 import numpy as np
@@ -21,7 +21,7 @@ import os
 from datetime import date, timedelta, datetime
 import pandas as pd
 import shutil
-import gdal
+from osgeo import gdal
 import sys
 import warnings
 import glob
@@ -35,8 +35,8 @@ sys.path.append(creodias_codes)
 
 from creodias_finder import query
 from creodias_finder import download
-creodias_user='gunjan@tathya.earth'
-creodias_password= 'Tathya@2019'
+creodias_user='keshav.quantumboy@gmail.com'
+creodias_password= 'Sangeetha2021'
 
 import cut
 import logger 
